@@ -64,7 +64,8 @@ spec:
 ```
 Additionally you can configure the following options environment variables.
 ```
-POLLING_DELAY=1000     # Milliseconds to wait between runs
-RUN_ONCE=1             # Only run once - use this to switch a cron job instead of 24/7 monitor run
-JOB_PREFIX=agent-job-  # Customize the agent job's prefix
+POLLING_DELAY=1000                           # Milliseconds to wait between runs
+RUN_ONCE=1                                   # Only run once - use this to switch a cron job instead of 24/7 monitor run
+JOB_PREFIX=agent-job-                        # Customize the agent job's prefix
+JOB_DOCKER_SOCKET_PATH=/var/run/docker.sock  # Set this to allow for docker builds within your docker container
 ```
