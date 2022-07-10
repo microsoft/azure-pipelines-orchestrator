@@ -18,8 +18,9 @@ static class KubeHelper
         var jobPrefix = Environment.GetEnvironmentVariable("JOB_PREFIX") ?? "agent-job-";
         var nameSpace = Environment.GetEnvironmentVariable("JOB_NAMESPACE") ?? "default";
         var jobImage = Environment.GetEnvironmentVariable("JOB_IMAGE");
+        var dockerSocketPath = Environment.GetEnvironmentVariable("JOB_DOCKER_SOCKET_PATH");
 
-        return await k8.CreateNamespacedJobAsync(new V1Job()
+        var job = new V1Job()
         {
             ApiVersion = "batch/v1",
             Kind = "Job",
@@ -35,24 +36,10 @@ static class KubeHelper
                     Spec = new V1PodSpec()
                     {
                         RestartPolicy = "Never",
-                        Volumes = new List<V1Volume>(){
-                            new V1Volume() {
-                                Name = "docker-volume",
-                                HostPath = new V1HostPathVolumeSource() {
-                                    Path = "/var/run/docker.sock"
-                                }
-                            }
-                        },
                         Containers = new List<V1Container>(){
                             new V1Container() {
                                 Name = $"{jobPrefix}{requestId}",
                                 Image = jobImage,
-                                VolumeMounts = new List<V1VolumeMount>() {
-                                    new V1VolumeMount() {
-                                        MountPath = "var/run/docker.sock",
-                                        Name = "docker-volume"
-                                    }
-                                },
                                 Env = new List<V1EnvVar>() {
                                     new V1EnvVar() {
                                         Name = "AZP_URL",
@@ -73,6 +60,32 @@ static class KubeHelper
                 }
             }
 
-        }, namespaceParameter: nameSpace);
+        };
+
+        // Not all K8s environments support the docker.sock
+        // This option allows users to opt-in to adding the volume mount
+        if(dockerSocketPath != null)
+        {
+            var podSpec = job.Spec.Template.Spec;
+            var volumeName = "docker-volume";
+            
+            podSpec.Volumes =  new List<V1Volume>(){
+                new V1Volume() {
+                    Name = volumeName,
+                    HostPath = new V1HostPathVolumeSource() {
+                        Path = dockerSocketPath
+                    }
+                }
+            };
+
+            podSpec.Containers[0].VolumeMounts = new List<V1VolumeMount>() {
+                new V1VolumeMount() {
+                    MountPath = dockerSocketPath,
+                    Name = volumeName
+                }
+            };
+        }
+
+        return await k8.CreateNamespacedJobAsync(job, namespaceParameter: nameSpace);
     }
 }
