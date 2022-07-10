@@ -24,6 +24,8 @@ switch (agentHostType)
         throw new Exception($"Host type [{agentHostType}] is not valid.");
 }
 
+await hostService.Initialize();
+
 Console.WriteLine("Starting Agent Orchestrator ..");
 Console.WriteLine($"ORG_URL: {orgUrl}");
 
