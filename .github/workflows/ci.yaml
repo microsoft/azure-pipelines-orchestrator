@@ -1,0 +1,27 @@
+name: Continuous Integration
+on: pull_request
+
+env:
+  DOTNET_VERSION: '6.0' # The .NET SDK version to use
+
+jobs:
+  ci:
+    name: Continuous Integration Check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install dependencies
+      run: | 
+        dotnet restore ./src/ADOAgentOrchestrator.csproj
+        dotnet restore ./tests/ADOAgentOrchestrator.Tests.csproj
+      
+    - name: Build
+      run: dotnet build --configuration Release --no-restore ./src/ADOAgentOrchestrator.csproj
+      
+    - name: Test
+      run: dotnet test  ./tests/ADOAgentOrchestrator.Tests.csproj
