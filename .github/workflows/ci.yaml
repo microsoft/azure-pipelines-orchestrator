@@ -16,7 +16,9 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Install dependencies
-      run: dotnet restore
+      run: | 
+        dotnet restore ./src/ADOAgentOrchestrator.csproj
+        dotnet restore ./tests/ADOAgentOrchestrator.Tests.csproj
       
     - name: Build
       run: dotnet build --configuration Release --no-restore ./src/ADOAgentOrchestrator.csproj
