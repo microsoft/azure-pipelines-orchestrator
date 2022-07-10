@@ -2,20 +2,29 @@
 using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
-using k8s;
 
 var config = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
+var agentHostType = config.GetValue<string>("HOST_TYPE", "kubernetes").ToLower();
 var orgUrl = config.GetValue<string>("ORG_URL");
 var orgPat = config.GetValue<string>("ORG_PAT");
 var agentPools = config.GetValue<string>("AGENT_POOLS").Split(',');
-var k8sConfig = config.GetValue<string>("KUBECONFIG");
-using var kubeConfigFile = File.OpenRead(k8sConfig);
-using var kubectl = new Kubernetes(await KubernetesClientConfiguration.BuildConfigFromConfigFileAsync(kubeConfigFile));
 
-Console.WriteLine("Starting Agent Orchestrator Balancing..");
+IAgentHostService hostService = null;
+
+switch (agentHostType)
+{
+    case "kubernetes":
+    case "k8s":
+        hostService = new KubernetesAgentHostService(config);
+    break;
+    default:
+        throw new Exception($"Host type [{agentHostType}] is not valid.");
+}
+
+Console.WriteLine("Starting Agent Orchestrator ..");
 Console.WriteLine($"ORG_URL: {orgUrl}");
 
 var creds = new VssBasicCredential(string.Empty, orgPat);
@@ -24,9 +33,6 @@ var creds = new VssBasicCredential(string.Empty, orgPat);
 var connection = new VssConnection(new Uri(orgUrl), creds);
 
 var DistributedTask = connection.GetClient<TaskAgentHttpClient>();
-var nameSpace = config.GetValue<string>("JOB_NAMESPACE") ?? "default";
-
-await kubectl.SetupNamespace();
 
 Int32.TryParse(config.GetValue<string>("POLLING_DELAY") ?? "1000", out var pollingDelay);
 
@@ -36,7 +42,6 @@ if (jobImage == null) throw new Exception("No Job image specified. Cannot contin
 
 while (true)
 {
-    var existingJobs = await kubectl.ListNamespacedJobAsync(nameSpace);
     foreach (var agentPoolName in agentPools)
     {
         var agentPool = (await DistributedTask.GetAgentPoolsAsync(agentPoolName)).FirstOrDefault();
@@ -59,7 +64,7 @@ while (true)
         {
             var reservedAgent = agents.FirstOrDefault(x => x.Id == jobRequest.ReservedAgent?.Id);
             var reservedAgentIsBusy = reservedAgent?.AssignedRequest != null;
-            var jobAlreadyProvisioned = existingJobs.Items.Any(x => x.Metadata.Name == $"agent-job-{jobRequest.RequestId}");
+            var jobAlreadyProvisioned = await hostService.IsJobProvisioned(jobRequest.RequestId);
 
             if (jobAlreadyProvisioned)
             {
@@ -71,7 +76,7 @@ while (true)
                 // provisioning if this block gets executed before k8s has a chance to spin up the agent
                 try
                 {
-                    var job = await kubectl.StartJob(jobRequest.RequestId, agentPoolName);
+                    await hostService.StartAgent(jobRequest.RequestId, agentPoolName);
                     Console.WriteLine($"Pipelines agent job provisioned for request id #{jobRequest.RequestId}.");
                 }
                 catch (Exception ex)
