@@ -68,4 +68,37 @@ POLLING_DELAY=1000                           # Milliseconds to wait between runs
 RUN_ONCE=1                                   # Only run once - use this to switch a cron job instead of 24/7 monitor run
 JOB_PREFIX=agent-job-                        # Customize the agent job's prefix
 JOB_DOCKER_SOCKET_PATH=/var/run/docker.sock  # Set this to allow for docker builds within your docker container
+JOB_DEFINITION_FILE=job.yaml                 # Provide a template for the k8s Jobs the orchestrator creates
+```
+
+## Customizing the Kubernetes Job
+In many scenarios you will want to specify additional configurations to the Job that the orchestrator creates in your k8s cluster. For example, perhaps your pipelines require a custom mounted set of secrets from a CSI, or you would like to reserve memory/cpu for each job, or mount a cached set of build assets. To allow for this level of customization you can now specify the `JOB_DEFINITION_FILE` env variable which will provide you a way of define all the bells and whistles you need for you pipeline agents.
+
+A sample custom job file might look like this:
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: custom-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: custom-job
+        image: ghcr.io/akanieski/ado-pipelines-linux:latest
+        resources:
+          requests:
+            memory: "100Mi"
+            cpu: "1"
+          limits:
+            memory: "200Mi"
+            cpu: "2"
+        env:
+          - name: AZP_URL
+            value: https://dev.azure.com/your-org
+          - name: AZP_TOKEN
+            value: xxxqhugutbqvpoxxxicdab2ojaipkw6kexxxau57bybmvksp5jpq
+          - name: AZP_POOL
+            value: Default
+      restartPolicy: Never
 ```
