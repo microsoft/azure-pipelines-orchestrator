@@ -20,6 +20,11 @@ switch (agentHostType)
     case "k8s":
         hostService = new KubernetesAgentHostService(config);
     break;
+    case "aci":
+    case "azurecontainerinstance":
+    case "azurecontainerinstances":
+        hostService = new ACIAgentHostService(config);
+    break;
     default:
         throw new Exception($"Host type [{agentHostType}] is not valid.");
 }
@@ -66,8 +71,11 @@ while (true)
         {
             var reservedAgent = agents.FirstOrDefault(x => x.Id == jobRequest.ReservedAgent?.Id);
             var reservedAgentIsBusy = reservedAgent?.AssignedRequest != null;
+            var sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
             var jobAlreadyProvisioned = await hostService.IsJobProvisioned(jobRequest.RequestId);
-
+            sw.Stop();
+            Console.WriteLine($"Check speed: {sw.ElapsedMilliseconds / 1000}s");
             if (jobAlreadyProvisioned)
             {
                 Console.WriteLine($"Pipelines agent job already provisioned for request id #{jobRequest.RequestId}.. skipping");

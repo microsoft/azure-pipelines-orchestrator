@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ADOAgentOrchestrator", "src\ADOAgentOrchestrator.csproj", "{759C5AA3-202E-479E-B7E1-0AC2B34B35B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ADOAgentOrchestrator.Tests", "tests\ADOAgentOrchestrator.Tests.csproj", "{F9C06B5D-2CF1-4B42-9E35-AF5DA11BF391}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{759C5AA3-202E-479E-B7E1-0AC2B34B35B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{759C5AA3-202E-479E-B7E1-0AC2B34B35B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{759C5AA3-202E-479E-B7E1-0AC2B34B35B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{759C5AA3-202E-479E-B7E1-0AC2B34B35B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9C06B5D-2CF1-4B42-9E35-AF5DA11BF391}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9C06B5D-2CF1-4B42-9E35-AF5DA11BF391}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9C06B5D-2CF1-4B42-9E35-AF5DA11BF391}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9C06B5D-2CF1-4B42-9E35-AF5DA11BF391}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
