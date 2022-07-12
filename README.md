@@ -102,3 +102,14 @@ spec:
             value: Default
       restartPolicy: Never
 ```
+
+## Running Serverless with Azure Container Instances
+You can also choose to avoid the work of setting up Kubernetes and simply run on Azure Container Instances, as shown below:
+```
+AZ_SUBSCRIPTION_ID=     # Your Azure Subscription ID
+AZ_RESOURCE_GROUP=      # The existing resource group that you will place provisioned container group/instances
+AZ_TENANT_ID=           # Your Azure Tenant ID
+AZ_REGION=EastUS        # The Azure region your resources are located
+AZ_ENVIRONMENT=         # The Azure environment, specify AzurePublicCloud, or other sovereign clouds like AzureChina
+```
+This feature uses the **"DefaultAzureCredentials"** API for Azure SDK. This allows for a variety of supported Azure credential scenarios. See [these docs](https://docs.microsoft.com/en-us/dotnet/api/azure.identity.environmentcredential?view=azure-dotnet) for more information on how to configure a scenario that works for you. 

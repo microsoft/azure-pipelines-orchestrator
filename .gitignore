@@ -2,4 +2,5 @@
 **/obj
 **/.vscode
 **/TestResults
+.vs/
 .tmp/
