@@ -66,16 +66,13 @@ public class ACIAgentHostService : BaseHostService, IAgentHostService
                 })
                 .Attach()
             .CreateAsync();
-            
-        WorkerAgent worker = null;
-        _workers.Add(worker = new WorkerAgent()
+        return new WorkerAgent()
         {
             Id = name,
             IsBusy = false,
             IsProvisioning = true,
             ProvisioningStart = DateTime.UtcNow
-        });
-        return worker;
+        };
     }
 
     public Task Initialize()

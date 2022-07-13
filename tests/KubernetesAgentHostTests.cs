@@ -1,11 +1,136 @@
 namespace ADOAgentOrchestrator.Tests;
-
+using Moq;
 
 
 [TestClass]
 public class KubernetesAgentHostTests
 {
-    static string testYaml = $@"
+    [TestMethod]
+    public void ShouldReadFromJobDefinition()
+    {
+        var jobDefFileName = "./JobDef.yaml";
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>() {
+                {"JOB_DEFINITION_FILE", jobDefFileName},
+            }.ToList())
+            .Build();
+        var mockFs = new Mock<FileSystem>();
+        mockFs.Setup(f => f.ReadAllText(jobDefFileName)).Returns(JobDefYaml);
+
+        var svcMock =  new Mock<KubernetesAgentHostService>(MockBehavior.Strict, config, mockFs.Object, string.Empty);
+        var svcConcrete = svcMock.Object;
+
+        mockFs.Verify(x => x.ReadAllText(jobDefFileName), Times.Once, "Should fetch jod definition from disk when provided.");
+    }
+    [TestMethod]
+    public async Task ShouldUpdateWorkerState()
+    {
+        var config = new ConfigurationBuilder().Build();
+
+        var svcMock =  new Mock<KubernetesAgentHostService>(config, new FileSystem(), "agentPool");
+        svcMock.SetupGet(x => x.ScheduledWorkerCount).CallBase();
+        svcMock.Setup(x => x.UpdateWorkersState(It.IsAny<List<WorkerAgent>>())).CallBase();
+        svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
+            Id = "Worker2",
+            IsProvisioning = true
+        }));
+        var svcConcrete = svcMock.Object;
+        await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() {
+            new WorkerAgent() {
+                Id = "Worker1"
+            }
+        });
+        
+        Assert.AreEqual(1, svcConcrete.ScheduledWorkerCount, "Should add new workers");
+
+        await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() {
+            new WorkerAgent() {
+                Id = "Worker1",
+                IsBusy = true
+            }
+        });
+        Assert.AreEqual(1, svcConcrete.ScheduledWorkerCount, "Should not add duplicate new workers");
+        
+
+        await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() { });
+        Assert.AreEqual(0, svcConcrete.ScheduledWorkerCount, "Should remove workers that are no longer present");
+    }
+    [TestMethod]
+    public async Task ShouldProvisionNewAgent_AsNeeded()
+    {
+        var config = new ConfigurationBuilder().Build();
+
+        var svcMock =  new Mock<KubernetesAgentHostService>(config, new FileSystem(), "agentPool");
+        svcMock.SetupGet(x => x.ScheduledWorkerCount).CallBase();
+        svcMock.Setup(x => x.UpdateDemand(It.IsAny<int>())).CallBase();
+        svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
+            Id = "Worker2",
+            IsProvisioning = true
+        }));
+        var svcConcrete = svcMock.Object;
+        
+        await svcConcrete.UpdateDemand(1);
+
+        Assert.AreEqual(1, svcConcrete.ScheduledWorkerCount, "Should add new workers");
+    }
+
+    [TestMethod]
+    public async Task ShouldProvisionNewAgent_IfExistingAreBusy()
+    {
+        var config = new ConfigurationBuilder().Build();
+
+        var svcMock =  new Mock<KubernetesAgentHostService>(config, new FileSystem(), "agentPool");
+        svcMock.SetupGet(x => x.ScheduledWorkerCount).CallBase();
+        svcMock.Setup(x => x.UpdateDemand(It.IsAny<int>())).CallBase();
+        svcMock.Setup(x => x.UpdateWorkersState(It.IsAny<List<WorkerAgent>>())).CallBase();
+        svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
+            Id = "Worker2",
+            IsProvisioning = true
+        }));
+        var svcConcrete = svcMock.Object;
+        // Place an existing worker into agents
+        await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() {
+            new WorkerAgent() {
+                Id = "Worker1",
+                IsBusy = true
+            }
+        });
+        
+        await svcConcrete.UpdateDemand(1);
+
+        Assert.AreEqual(2, svcConcrete.ScheduledWorkerCount, "Should add new workers if existing are busy");
+    }
+
+    [TestMethod]
+    public async Task ShouldNotProvisionNewAgent_IfExistingAreProvisioning()
+    {
+        var config = new ConfigurationBuilder().Build();
+
+        var svcMock =  new Mock<KubernetesAgentHostService>(config, new FileSystem(), "agentPool");
+        svcMock.SetupGet(x => x.ScheduledWorkerCount).CallBase();
+        svcMock.Setup(x => x.UpdateDemand(It.IsAny<int>())).CallBase();
+        svcMock.Setup(x => x.UpdateWorkersState(It.IsAny<List<WorkerAgent>>())).CallBase();
+        svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
+            Id = "Worker2",
+            IsProvisioning = true
+        }));
+        var svcConcrete = svcMock.Object;
+        // Place an existing worker into agents
+        await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() {
+            new WorkerAgent() {
+                Id = "Worker1",
+                IsBusy = false,
+                IsProvisioning = true
+            }
+        });
+        
+        await svcConcrete.UpdateDemand(1);
+
+        Assert.AreEqual(1, svcConcrete.ScheduledWorkerCount, "Should NOT add new workers if existing is provisioning");
+    }
+
+
+    private string JobDefYaml = $@"
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -39,26 +164,4 @@ spec:
           hostPath:
             path: /var/run/docker.sock
 ";
-    private class MockFileSystem : IFileSystem
-    {
-        public int CallCount = 0;
-        public string ReadAllText(string path) { 
-            CallCount++;
-            return testYaml;
-        }
-    }
-    [TestMethod]
-    public void RequireKubeConfig()
-    {
-        var config = new ConfigurationBuilder()
-        .AddInMemoryCollection(new Dictionary<string, string>() {
-            {"JOB_DEFINITION_FILE", "./JobDef.yaml"},
-        }.ToList())
-        .Build();
-
-        var mockFs = new MockFileSystem();
-        var svc =  new KubernetesAgentHostService(config, mockFs, string.Empty);
-
-        Assert.AreEqual(1, mockFs.CallCount, "Should fetch jod definition from disk when provided.");
-    }
 }

@@ -5,7 +5,7 @@ public class BaseHostService
     protected string _poolName;
     protected string _jobPrefix;
 
-    public int ScheduledWorkerCount => _workers.Count();
+    public virtual int ScheduledWorkerCount => _workers.Count();
     protected string FormatJobName() => $"{_jobPrefix}-{_poolName}-{Guid.NewGuid().ToString().Substring(0, 4)}".ToLower();
     public virtual async Task UpdateDemand(int agentDemand)
     {
@@ -20,6 +20,7 @@ public class BaseHostService
                 try
                 {
                     var worker = await StartAgent();
+                    _workers.Add(worker);
                     Console.WriteLine($"Provisioned agent worker {worker.Id} to meet demand of {netAgentDemand}");
                 }
                 catch (Exception ex)
@@ -62,6 +63,7 @@ public class BaseHostService
             existingWorker.IsBusy = updatedAgent.IsBusy;
             updatedAgent.IsProvisioning = false;
         }
+        foreach (var worker in toDelete) _workers.Remove(worker);
         // Add any new workers that made their way into the pool
         _workers.AddRange(updatedAgents.Where(u => !_workers.Any(w => w.Id.StartsWith(u.Id))));
 

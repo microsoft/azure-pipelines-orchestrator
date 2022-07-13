@@ -14,6 +14,6 @@ public class WorkerAgent
 {
     public string Id {get;set;}
     public bool IsBusy {get;set;}
-    public bool IsProvisioning { get; internal set; }
-    public DateTime ProvisioningStart { get; internal set; }
+    public bool IsProvisioning { get; set; }
+    public DateTime ProvisioningStart { get; set; }
 }

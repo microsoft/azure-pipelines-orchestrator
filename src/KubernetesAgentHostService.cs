@@ -128,14 +128,12 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
 
         job = await _kubectl.CreateNamespacedJobAsync(job, namespaceParameter: _namespace);
 
-        WorkerAgent worker = null;
-        _workers.Add(worker = new WorkerAgent()
+        return new WorkerAgent()
         {
             Id = name,
             IsBusy = false,
             IsProvisioning = true,
             ProvisioningStart = DateTime.UtcNow
-        });
-        return worker;
+        };
     }
 }

@@ -3,5 +3,5 @@ public interface IFileSystem {
 }
 public class FileSystem : IFileSystem
 {
-    public string ReadAllText(string path) => File.ReadAllText(path);
+    public virtual string ReadAllText(string path) => File.ReadAllText(path);
 }
