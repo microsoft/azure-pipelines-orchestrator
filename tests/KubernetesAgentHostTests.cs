@@ -52,9 +52,7 @@ spec:
     {
         var config = new ConfigurationBuilder()
         .AddInMemoryCollection(new Dictionary<string, string>() {
-            {"KUBECONFIG", "~/.kube/config"},
             {"JOB_DEFINITION_FILE", "./JobDef.yaml"},
-
         }.ToList())
         .Build();
 

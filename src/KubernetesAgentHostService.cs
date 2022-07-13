@@ -16,10 +16,9 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
 
     public KubernetesAgentHostService(IConfiguration config, IFileSystem fs, string poolName)
     {
-        var kubeConfPath = config.GetValue<string>("KUBECONFIG", null);
-        if (kubeConfPath == null) throw new ArgumentNullException("'KUBECONFIG' environment variable required but missing.");
-        using var kubeConfigFile = File.OpenRead(kubeConfPath);
-        _kubectl = new Kubernetes(KubernetesClientConfiguration.BuildConfigFromConfigFile(kubeConfigFile));
+        // The default config will either check the well known KUBECONFIG env
+        // or, if within the cluster, checks /var/run/secrets/kubernetes.io/serviceaccount
+        _kubectl = new Kubernetes(KubernetesClientConfiguration.BuildDefaultConfig());
         _namespace = config.GetValue<string>("JOB_NAMESPACE", "default");
         _jobPrefix = config.GetValue<string>("JOB_PREFIX", DEFAULT_JOB_PREFIX);
         _jobImage = config.GetValue<string>("JOB_IMAGE");
