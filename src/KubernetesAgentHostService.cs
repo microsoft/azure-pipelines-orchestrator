@@ -14,7 +14,7 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
     private V1Job _predefinedJob;
     private Kubernetes _kubectl;
 
-    public KubernetesAgentHostService(IConfiguration config, string poolName)
+    public KubernetesAgentHostService(IConfiguration config, IFileSystem fs, string poolName)
     {
         var kubeConfPath = config.GetValue<string>("KUBECONFIG", null);
         if (kubeConfPath == null) throw new ArgumentNullException("'KUBECONFIG' environment variable required but missing.");
@@ -30,7 +30,7 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
         _poolName = poolName;
         if (_jobDefFile != null)
         {
-            _predefinedJob = KubernetesYaml.Deserialize<V1Job>(System.IO.File.ReadAllText(_jobDefFile));
+            _predefinedJob = KubernetesYaml.Deserialize<V1Job>(fs.ReadAllText(_jobDefFile));
             _jobPrefix = _predefinedJob.Metadata.Name ?? _jobPrefix;
         }
     }

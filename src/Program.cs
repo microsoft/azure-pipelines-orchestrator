@@ -41,7 +41,7 @@ while (true)
             {
                 case "kubernetes":
                 case "k8s":
-                    hostService = new KubernetesAgentHostService(config, agentPoolName);
+                    hostService = new KubernetesAgentHostService(config, new FileSystem(), agentPoolName);
                     hostServices.Add(agentPoolName, hostService);
                     break;
                     
