@@ -6,7 +6,7 @@ using System.Net.Http.Headers;
 using Azure.Extensions.Identity;
 using FluentAzure = Microsoft.Azure.Management.Fluent.Azure;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-
+/*
 public class ACIAgentHostService : IAgentHostService
 {
     private string _jobPrefix;
@@ -39,9 +39,9 @@ public class ACIAgentHostService : IAgentHostService
         if (_azResourceGroup == null) throw new ArgumentNullException("Azure resource group is required.");
     }
 
-    private string FormatJobName(long requestId) => $"{_jobPrefix}{requestId}";
+    private string FormatJobName(string requestId) => $"{_jobPrefix}{requestId}";
 
-    public async Task<bool> IsJobProvisioned(long requestId) =>
+    public async Task<bool> IsJobProvisioned(string requestId) =>
         (await GetAzureContext().ContainerGroups.GetByIdAsync(
             $"/subscriptions/{_azSub}/resourceGroups/{_azResourceGroup}/providers/Microsoft.ContainerInstance/containerGroups/{FormatJobName(requestId)}"))
             != null;
@@ -51,7 +51,7 @@ public class ACIAgentHostService : IAgentHostService
         .Authenticate(new AzureIdentityFluentCredentialAdapter(_azTenant, AzureEnvironment.FromName(_azEnvironment)))
         .WithSubscription(_azSub);
 
-    public async Task StartAgent(long requestId, string agentPool)
+    public async Task StartAgent(string requestId, string agentPool)
     {
         dynamic instance = GetAzureContext()
             .ContainerGroups
@@ -88,3 +88,4 @@ public class ACIAgentHostService : IAgentHostService
         return Task.CompletedTask;
     }
 }
+*/

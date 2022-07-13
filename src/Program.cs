@@ -12,24 +12,7 @@ var orgUrl = config.GetValue<string>("ORG_URL");
 var orgPat = config.GetValue<string>("ORG_PAT");
 var agentPools = config.GetValue<string>("AGENT_POOLS").Split(',');
 
-IAgentHostService hostService = null;
-
-switch (agentHostType)
-{
-    case "kubernetes":
-    case "k8s":
-        hostService = new KubernetesAgentHostService(config);
-    break;
-    case "aci":
-    case "azurecontainerinstance":
-    case "azurecontainerinstances":
-        hostService = new ACIAgentHostService(config);
-    break;
-    default:
-        throw new Exception($"Host type [{agentHostType}] is not valid.");
-}
-
-await hostService.Initialize();
+Dictionary<string, IAgentHostService> hostServices = new Dictionary<string, IAgentHostService>();
 
 Console.WriteLine("Starting Agent Orchestrator ..");
 Console.WriteLine($"ORG_URL: {orgUrl}");
@@ -51,22 +34,55 @@ while (true)
 {
     foreach (var agentPoolName in agentPools)
     {
+        IAgentHostService hostService = hostServices.ContainsKey(agentPoolName) ? hostServices[agentPoolName] : null;
+        if (hostService == null)
+        {
+            switch (agentHostType)
+            {
+                case "kubernetes":
+                case "k8s":
+                    hostService = new KubernetesAgentHostService(config, agentPoolName);
+                    hostServices.Add(agentPoolName, hostService);
+                    break;
+                    /*
+                case "aci":
+                case "azurecontainerinstance":
+                case "azurecontainerinstances":
+                    hostService = new ACIAgentHostService(config);
+                    break;*/
+                default:
+                    throw new Exception($"Host type [{agentHostType}] is not valid.");
+            }
+
+            await hostService.Initialize();
+        }
+
         var agentPool = (await DistributedTask.GetAgentPoolsAsync(agentPoolName)).FirstOrDefault();
         if (agentPool == null)
         {
             Console.WriteLine($"Could not locate agent pool named [{agentPoolName}].");
             continue;
         }
-        var agents = await DistributedTask.GetAgentsAsync(agentPool.Id, includeAssignedRequest: true);
+        var agents = (await DistributedTask.GetAgentsAsync(agentPool.Id, includeAssignedRequest: true)).Where(a => a.Status == TaskAgentStatus.Online);
+
+        // Let our host service know which agents are currently online.. it will trim out any workers that have gone offline
+        await hostService.UpdateWorkersState(agents.Select(a => new WorkerAgent()
+        {
+            Id = a.Name,
+            IsBusy = a.AssignedRequest != null
+        }));
+
         var jobRequests = (await DistributedTask.GetAgentRequestsAsync(agentPool.Id, 999))
             .Where(x => !x.Result.HasValue);
-        // A JobRequest object with no Result means it is either currently running or hasn't started running yet and hasn't completed
 
+        // A JobRequest object with no Result means it is either currently running and hasn't completed or hasn't started running yet 
         if (!jobRequests.Any())
         {
             Console.WriteLine($"No jobs for agent pool [{agentPoolName}].");
             continue;
         }
+
+        int agentDemand = 0;
 
         foreach (var jobRequest in jobRequests)
         {
@@ -74,37 +90,15 @@ while (true)
             var reservedAgent = agents.FirstOrDefault(x => x.Id == jobRequest.ReservedAgent?.Id);
             // If there is a reserved agent.. and that reservedAgent happens to already have an assigned request.. this means there are not 
             // enough agents running to meet the demand.. so we should introduce a new agent to the pool
-            var reservedAgentIsBusy = reservedAgent?.AssignedRequest != null;
-
-            // Has a job agent already been provisioned for this specific request? Here is where things can get tricky. A given job agent is
-            // not actually provisioned to satisfy a specific Job Request. It is added to the pool where it will satisfy requests in the pool 
-            // in general.. so its possible that a Job Agent is provisioned on behalf of JobRequest #1 but ends up taking up JobRequest #2
-            var jobAlreadyProvisioned = await hostService.IsJobProvisioned(jobRequest.RequestId);
-            
-            
-            if (jobAlreadyProvisioned)
+            var reservedAgentIsBusy = reservedAgent?.AssignedRequest != null && reservedAgent.AssignedRequest.RequestId != jobRequest.RequestId;
+            if (reservedAgent == null || reservedAgentIsBusy)
             {
-                Console.WriteLine($"Pipelines agent job already provisioned for request id #{jobRequest.RequestId}.. skipping");
+                agentDemand++;
             }
-            else if (reservedAgent == null || reservedAgentIsBusy)
-            {
-                try
-                {
-                    await hostService.StartAgent(jobRequest.RequestId, agentPoolName);
-                    Console.WriteLine($"Pipelines agent job provisioned for request id #{jobRequest.RequestId}.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Error] Failed to provision agent job for request id #{jobRequest.RequestId}.");
-                    Console.WriteLine($"{ex.ToString()}");
-                }
-            }
-            else
-            {
-                Console.WriteLine($"Job request [{jobRequest.RequestId}] is queued and an agent is available in pool [{agentPoolName}]. ADO will pick it up shortly.");
-            }
-
         }
+
+        // Host Service will assess it's current scheduled workers and add more as needed if there are not enough idle agents
+        await hostService.UpdateDemand(agentDemand);
     }
 
     if (config.GetValue<int>("RUN_ONCE", 0) == 1) break;
