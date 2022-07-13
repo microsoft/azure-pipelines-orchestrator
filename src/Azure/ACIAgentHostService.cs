@@ -9,7 +9,6 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 
 public class ACIAgentHostService : BaseHostService, IAgentHostService
 {
-    private string _jobPrefix;
     private string _azSub;
     private string _azTenant;
     private string _jobImage;
@@ -39,8 +38,6 @@ public class ACIAgentHostService : BaseHostService, IAgentHostService
         if (_azTenant == null) throw new ArgumentNullException("Azure tenant id is required.");
         if (_azResourceGroup == null) throw new ArgumentNullException("Azure resource group is required.");
     }
-
-    private string FormatJobName() => $"{_jobPrefix}-{_poolName}-{Guid.NewGuid().ToString().Substring(0,4)}".ToLower();
 
     private IAzure GetAzureContext() =>
         FluentAzure

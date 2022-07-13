@@ -3,8 +3,10 @@ public class BaseHostService
     protected List<WorkerAgent> _workers = new List<WorkerAgent>();
     protected TimeSpan AGENT_PROVISIONING_TIMEOUT = TimeSpan.FromMinutes(5);
     protected string _poolName;
+    protected string _jobPrefix;
 
     public int ScheduledWorkerCount => _workers.Count();
+    protected string FormatJobName() => $"{_jobPrefix}-{_poolName}-{Guid.NewGuid().ToString().Substring(0, 4)}".ToLower();
     public virtual async Task UpdateDemand(int agentDemand)
     {
         // There appears to be X Job Requests that are not currently assigned to an agent that is idle

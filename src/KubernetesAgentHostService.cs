@@ -6,7 +6,6 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
 {
     private const string DEFAULT_JOB_PREFIX = "agent-job";
     private string _namespace;
-    private string _jobPrefix;
     private string _jobImage;
     private string _azpUrl;
     private string _azpPat;
@@ -49,10 +48,6 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
             });
         }
     }
-
-    public int ScheduledWorkerCount => _workers.Count;
-    private string FormatJobName() => $"{_jobPrefix}-{_poolName}-{Guid.NewGuid().ToString().Substring(0, 4)}".ToLower();
-
 
     public override async Task<WorkerAgent> StartAgent()
     {
