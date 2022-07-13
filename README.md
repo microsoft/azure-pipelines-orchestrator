@@ -113,3 +113,64 @@ AZ_REGION=EastUS        # The Azure region your resources are located
 AZ_ENVIRONMENT=         # The Azure environment, specify AzurePublicCloud, or other sovereign clouds like AzureChina
 ```
 This feature uses the **"DefaultAzureCredentials"** API for Azure SDK. This allows for a variety of supported Azure credential scenarios. See [these docs](https://docs.microsoft.com/en-us/dotnet/api/azure.identity.environmentcredential?view=azure-dotnet) for more information on how to configure a scenario that works for you. 
+
+## Improving build times through Persistent Volumes
+Kubernetes provides users with a convenient mechanism for sharing a disk between multiple containers, or in our case multiple agents and between multiple pipeline runs. We can use this to our advantage. By mounting persistent volumes at key locations you can carry cached data to all of the agents in your pool. 
+
+For example, mounting a persistent volume to the `/root/.nuget/package` path as shown below will make sure you don't have to re-download nuget packages on every single pipeline run.
+
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: custom-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: custom-job
+        image: ghcr.io/akanieski/ado-pipelines-linux:0.0.1-preview
+        volumeMounts:
+          - mountPath: "/root/.nuget/packages"
+            name: nuget-cache
+      volumes:
+        - name: nuget-cache
+          persistentVolumeClaim:
+            claimName: nuget-cache-claim
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nuget-cache
+spec:
+  capacity:
+   storage: 10Gi
+  accessModes:
+   - ReadWriteMany
+  hostPath:
+    path: "/tmp/nuget-cache"
+  storageClassName: slow
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nuget-cache-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: slow
+
+```
+
+Other examples of commonly cached paths:
+- `/azp/_work/_tasks` - ADO Pipeline tasks that are downloaded every single time will be cached here - saves time on every run!
+- `/azp/_work/_tool` - ADO Tools installer tasks like .NET Tools, NodeJS Tools, etc - saves time on most runs!
+- `/root/.npm` - Npm packages are notoriously numerous, mounting a cache here will save lots of time for JS builds
+- `/root/.nuget/packages` - Save time on .NET builds
+
+**Note:** the `/root` path above is based on the user/homepath of the user your docker agent runs under. In the examples I use `root` user (not ideal in real world scenarios) for my agent containers. Also note for windows they will also have different paths. The key for both scenarios is that these `/root` paths are the container user's homepath, on Windows it may be `c:\users\agent\` etc.
