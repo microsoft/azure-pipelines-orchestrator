@@ -8,7 +8,7 @@ public class KubernetesAgentHostTests
     {
         var config = new ConfigurationBuilder().Build();
         Assert.ThrowsException<ArgumentNullException>(() => {
-            var _ =  new KubernetesAgentHostService(config);
+            var _ =  new KubernetesAgentHostService(config, string.Empty);
         });
     }
 }
