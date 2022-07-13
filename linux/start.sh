@@ -79,7 +79,6 @@ print_header "3. Configuring Azure Pipelines agent..."
   --pool "${AZP_POOL:-Default}" \
   --work "${AZP_WORK:-_work}" \
   --replace \
-  --once
   --acceptTeeEula & wait $!
 
 print_header "4. Running Azure Pipelines agent..."
@@ -92,4 +91,4 @@ chmod +x ./run-docker.sh
 
 # To be aware of TERM and INT signals call run.sh
 # Running it with the --once flag at the end will shut down the agent after the build is executed
-./run-docker.sh "$@" & wait $!
+./run-docker.sh "$@" --once & wait $!
