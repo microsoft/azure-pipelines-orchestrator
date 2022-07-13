@@ -60,6 +60,7 @@ while (true)
         var agents = await DistributedTask.GetAgentsAsync(agentPool.Id, includeAssignedRequest: true);
         var jobRequests = (await DistributedTask.GetAgentRequestsAsync(agentPool.Id, 999))
             .Where(x => !x.Result.HasValue);
+        // A JobRequest object with no Result means it is either currently running or hasn't started running yet and hasn't completed
 
         if (!jobRequests.Any())
         {
@@ -69,21 +70,24 @@ while (true)
 
         foreach (var jobRequest in jobRequests)
         {
+            // ADO populates a "ReservedAgent" property on a given JobRequest when it has identified which job agent it expects to run a job
             var reservedAgent = agents.FirstOrDefault(x => x.Id == jobRequest.ReservedAgent?.Id);
+            // If there is a reserved agent.. and that reservedAgent happens to already have an assigned request.. this means there are not 
+            // enough agents running to meet the demand.. so we should introduce a new agent to the pool
             var reservedAgentIsBusy = reservedAgent?.AssignedRequest != null;
-            var sw = new System.Diagnostics.Stopwatch();
-            sw.Start();
+
+            // Has a job agent already been provisioned for this specific request? Here is where things can get tricky. A given job agent is
+            // not actually provisioned to satisfy a specific Job Request. It is added to the pool where it will satisfy requests in the pool 
+            // in general.. so its possible that a Job Agent is provisioned on behalf of JobRequest #1 but ends up taking up JobRequest #2
             var jobAlreadyProvisioned = await hostService.IsJobProvisioned(jobRequest.RequestId);
-            sw.Stop();
-            Console.WriteLine($"Check speed: {sw.ElapsedMilliseconds / 1000}s");
+            
+            
             if (jobAlreadyProvisioned)
             {
                 Console.WriteLine($"Pipelines agent job already provisioned for request id #{jobRequest.RequestId}.. skipping");
             }
             else if (reservedAgent == null || reservedAgentIsBusy)
             {
-                // Todo: Provision new agent in K8s - need to in future add logic to avoid double 
-                // provisioning if this block gets executed before k8s has a chance to spin up the agent
                 try
                 {
                     await hostService.StartAgent(jobRequest.RequestId, agentPoolName);
