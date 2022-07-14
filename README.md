@@ -1,5 +1,5 @@
 # Azure Pipelines - Kubernetes Orchestrator
-[![Continuous Integration](https://github.com/akanieski/ado-agent-orchestrator/actions/workflows/ci.yaml/badge.svg?branch=feature%2Frethink-agent-demand-logic)](https://github.com/akanieski/ado-agent-orchestrator/actions/workflows/ci.yaml)
+[![Continuous Integration](https://github.com/akanieski/ado-agent-orchestrator/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/akanieski/ado-agent-orchestrator/actions/workflows/ci.yaml)
 
 Many enterprise customers run their own Kubernetes clusters either on-premise or in managed kubernetes environments in the cloud. Azure DevOps Services and Server agents can run from containers hosted in these Kubernetes clusters, but what if you do not want to run your agents 24/7? What if you need to be able to scale the number of agents dynamically as pipelines jobs are queued?
 
