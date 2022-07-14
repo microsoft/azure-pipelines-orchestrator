@@ -1,4 +1,5 @@
 # Azure Pipelines - Kubernetes Orchestrator
+![example branch parameter](https://github.com/akanieski/ado-agent-orchestrator/actions/workflows/ci.yaml/badge.svg?branch=feature/rethink-agent-demand-logic
 Many enterprise customers run their own Kubernetes clusters either on-premise or in managed kubernetes environments in the cloud. Azure DevOps Services and Server agents can run from containers hosted in these Kubernetes clusters, but what if you do not want to run your agents 24/7? What if you need to be able to scale the number of agents dynamically as pipelines jobs are queued?
 
 This project provides an application that can monitor a configurable set of agent pools, when pipeline jobs are queued up it will automagically provision Kubernetes Jobs for each job that is queued up. The Kubernetes Jobs will run and process only a single Pipelines Job and then be cleaned up by Kubernetes. 
