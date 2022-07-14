@@ -5,6 +5,7 @@ using Moq;
 [TestClass]
 public class KubernetesAgentHostTests
 {
+
     [TestMethod]
     public void ShouldReadFromJobDefinition()
     {
@@ -22,17 +23,42 @@ public class KubernetesAgentHostTests
 
         mockFs.Verify(x => x.ReadAllText(jobDefFileName), Times.Once, "Should fetch jod definition from disk when provided.");
     }
+
     [TestMethod]
-    public async Task ShouldUpdateWorkerState()
+    public async Task ShouldAddNewAgentsToMeetMinimumCount()
     {
-        var config = new ConfigurationBuilder().Build();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>() {
+                {"MINIMUM_AGENT_COUNT", "2"},
+            }.ToList()).Build();
 
         var svcMock =  new Mock<KubernetesAgentHostService>(config, new FileSystem(), "agentPool");
         svcMock.SetupGet(x => x.ScheduledWorkerCount).CallBase();
         svcMock.Setup(x => x.UpdateWorkersState(It.IsAny<List<WorkerAgent>>())).CallBase();
         svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
-            Id = "Worker2",
-            IsProvisioning = true
+            Id = "Worker" + Guid.NewGuid().ToString(),
+            ProvisioningStart = DateTime.UtcNow
+        }));
+        var svcConcrete = svcMock.Object;
+
+        await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() { });
+        Assert.AreEqual(2, svcConcrete.ScheduledWorkerCount, "Should maintain minimum agent count");
+    }
+
+    [TestMethod]
+    public async Task ShouldUpdateWorkerState()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>() {
+                {"MINIMUM_AGENT_COUNT", "0"},
+            }.ToList()).Build();
+
+        var svcMock =  new Mock<KubernetesAgentHostService>(config, new FileSystem(), "agentPool");
+        svcMock.SetupGet(x => x.ScheduledWorkerCount).CallBase();
+        svcMock.Setup(x => x.UpdateWorkersState(It.IsAny<List<WorkerAgent>>())).CallBase();
+        svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
+            Id = "Worker" + Guid.NewGuid().ToString(),
+            ProvisioningStart = DateTime.UtcNow
         }));
         var svcConcrete = svcMock.Object;
         await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() {
@@ -50,11 +76,11 @@ public class KubernetesAgentHostTests
             }
         });
         Assert.AreEqual(1, svcConcrete.ScheduledWorkerCount, "Should not add duplicate new workers");
-        
 
         await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() { });
-        Assert.AreEqual(0, svcConcrete.ScheduledWorkerCount, "Should remove workers that are no longer present");
+        Assert.AreEqual(0, svcConcrete.ScheduledWorkerCount, "Should remove agents from tracking when they leave the real pool");
     }
+    
     [TestMethod]
     public async Task ShouldProvisionNewAgent_AsNeeded()
     {
@@ -65,7 +91,7 @@ public class KubernetesAgentHostTests
         svcMock.Setup(x => x.UpdateDemand(It.IsAny<int>())).CallBase();
         svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
             Id = "Worker2",
-            IsProvisioning = true
+            ProvisioningStart = DateTime.UtcNow
         }));
         var svcConcrete = svcMock.Object;
         
@@ -85,7 +111,7 @@ public class KubernetesAgentHostTests
         svcMock.Setup(x => x.UpdateWorkersState(It.IsAny<List<WorkerAgent>>())).CallBase();
         svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
             Id = "Worker2",
-            IsProvisioning = true
+            ProvisioningStart = DateTime.UtcNow
         }));
         var svcConcrete = svcMock.Object;
         // Place an existing worker into agents
@@ -112,15 +138,16 @@ public class KubernetesAgentHostTests
         svcMock.Setup(x => x.UpdateWorkersState(It.IsAny<List<WorkerAgent>>())).CallBase();
         svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
             Id = "Worker2",
-            IsProvisioning = true
+            ProvisioningStart = DateTime.UtcNow
         }));
+        
         var svcConcrete = svcMock.Object;
         // Place an existing worker into agents
         await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() {
             new WorkerAgent() {
                 Id = "Worker1",
                 IsBusy = false,
-                IsProvisioning = true
+                ProvisioningStart = DateTime.UtcNow
             }
         });
         
