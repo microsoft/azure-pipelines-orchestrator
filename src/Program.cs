@@ -64,8 +64,10 @@ while (true)
             Console.WriteLine($"Could not locate agent pool named [{agentPoolName}].");
             continue;
         }
-        var agents = (await DistributedTask.GetAgentsAsync(agentPool.Id, includeAssignedRequest: true))
-            .Where(a => a.Status == TaskAgentStatus.Online && a.Enabled == true);
+        var totalAgents = (await DistributedTask.GetAgentsAsync(agentPool.Id, includeAssignedRequest: true));
+        
+        var agents = totalAgents.Where(a => a.Status == TaskAgentStatus.Online && a.Enabled == true);
+
 
         // Let our host service know which agents are currently online.. it will trim out any workers that have gone offline
         await hostService.UpdateWorkersState(agents.Select(a => new WorkerAgent()

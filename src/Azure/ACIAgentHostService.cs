@@ -70,7 +70,6 @@ public class ACIAgentHostService : BaseHostService, IAgentHostService
         {
             Id = name,
             IsBusy = false,
-            IsProvisioning = true,
             ProvisioningStart = DateTime.UtcNow
         };
     }

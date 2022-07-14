@@ -26,6 +26,7 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
         _azpPat = config.GetValue<string>("ORG_PAT");
         _dockerSockPath = config.GetValue<string>("JOB_DOCKER_SOCKET_PATH");
         _jobDefFile = config.GetValue<string>("JOB_DEFINITION_FILE");
+        _minimumAgentCount = config.GetValue<int>("MINIMUM_AGENT_COUNT", 1);
         _poolName = poolName;
         if (_jobDefFile != null)
         {
@@ -132,7 +133,6 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
         {
             Id = name,
             IsBusy = false,
-            IsProvisioning = true,
             ProvisioningStart = DateTime.UtcNow
         };
     }
