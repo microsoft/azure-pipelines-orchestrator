@@ -1,5 +1,6 @@
 name: Continuous Integration
-on: pull_request
+on: 
+  push
 
 env:
   DOTNET_VERSION: '6.0' # The .NET SDK version to use
