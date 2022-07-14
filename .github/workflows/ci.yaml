@@ -24,10 +24,10 @@ jobs:
       run: dotnet build --configuration Release --no-restore ./src/ADOAgentOrchestrator.csproj
       
     - name: Test
-      run: dotnet test  ./tests/ADOAgentOrchestrator.Tests.csproj --collect:"XPlat Code Coverage"
+      run: dotnet test --collect:"XPlat Code Coverage" --logger "junit;LogFilePath=TestResults.xml"
 
     - name: Publish Test Results
       uses: EnricoMi/publish-unit-test-result-action/composite@v1
       if: always()
       with:
-        files: "tests/TestResults/**/*.xml"
+        files: "tests/TestResults.xml"
