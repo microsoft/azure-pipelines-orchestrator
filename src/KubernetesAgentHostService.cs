@@ -2,11 +2,10 @@ using Microsoft.Extensions.Configuration;
 using k8s;
 using k8s.Models;
 
-public class KubernetesAgentHostService : IAgentHostService
+public class KubernetesAgentHostService : BaseHostService, IAgentHostService
 {
-    private const string DEFAULT_JOB_PREFIX = "agent-job-";
+    private const string DEFAULT_JOB_PREFIX = "agent-job";
     private string _namespace;
-    private string _jobPrefix;
     private string _jobImage;
     private string _azpUrl;
     private string _azpPat;
@@ -15,10 +14,7 @@ public class KubernetesAgentHostService : IAgentHostService
     private V1Job _predefinedJob;
     private Kubernetes _kubectl;
 
-    private string FormatJobName(long requestId) => $"{_jobPrefix}-{requestId}";
-    
-
-    public KubernetesAgentHostService(IConfiguration config)
+    public KubernetesAgentHostService(IConfiguration config, IFileSystem fs, string poolName)
     {
         // The default config will either check the well known KUBECONFIG env
         // or, if within the cluster, checks /var/run/secrets/kubernetes.io/serviceaccount
@@ -30,10 +26,10 @@ public class KubernetesAgentHostService : IAgentHostService
         _azpPat = config.GetValue<string>("ORG_PAT");
         _dockerSockPath = config.GetValue<string>("JOB_DOCKER_SOCKET_PATH");
         _jobDefFile = config.GetValue<string>("JOB_DEFINITION_FILE");
-
+        _poolName = poolName;
         if (_jobDefFile != null)
         {
-            _predefinedJob = KubernetesYaml.Deserialize<V1Job>(System.IO.File.ReadAllText(_jobDefFile));
+            _predefinedJob = KubernetesYaml.Deserialize<V1Job>(fs.ReadAllText(_jobDefFile));
             _jobPrefix = _predefinedJob.Metadata.Name ?? _jobPrefix;
         }
     }
@@ -52,16 +48,13 @@ public class KubernetesAgentHostService : IAgentHostService
         }
     }
 
-    public async Task<bool> IsJobProvisioned(long requestId) =>
-        (await _kubectl.ListNamespacedJobAsync(_namespace))
-            .Items.Any(x => x.Metadata.Name == FormatJobName(requestId));
-
-    public async Task StartAgent(long requestId, string agentPool)
+    public override async Task<WorkerAgent> StartAgent()
     {
         V1Job job = _predefinedJob;
+        var name = FormatJobName();
         if (_predefinedJob != null)
         {
-            _predefinedJob.Metadata.Name = FormatJobName(requestId);
+            _predefinedJob.Metadata.Name = name;
         }
         else
         {
@@ -71,7 +64,7 @@ public class KubernetesAgentHostService : IAgentHostService
                 Kind = "Job",
                 Metadata = new V1ObjectMeta()
                 {
-                    Name = FormatJobName(requestId),
+                    Name = name,
                     NamespaceProperty = _namespace
                 },
                 Spec = new V1JobSpec()
@@ -83,7 +76,7 @@ public class KubernetesAgentHostService : IAgentHostService
                             RestartPolicy = "Never",
                             Containers = new List<V1Container>(){
                             new V1Container() {
-                                Name = FormatJobName(requestId),
+                                Name = name,
                                 Image = _jobImage,
                                 Env = new List<V1EnvVar>() {
                                     new V1EnvVar() {
@@ -96,7 +89,7 @@ public class KubernetesAgentHostService : IAgentHostService
                                     },
                                     new V1EnvVar() {
                                         Name = "AZP_POOL",
-                                        Value = agentPool
+                                        Value = _poolName
                                     }
                                 }
                             }
@@ -115,23 +108,32 @@ public class KubernetesAgentHostService : IAgentHostService
                 var podSpec = job.Spec.Template.Spec;
                 var volumeName = "docker-volume";
 
-                podSpec.Volumes = new List<V1Volume>(){
-                new V1Volume() {
-                    Name = volumeName,
-                    HostPath = new V1HostPathVolumeSource() {
-                        Path = _dockerSockPath
+                podSpec.Volumes = new List<V1Volume>() {
+                    new V1Volume() {
+                        Name = volumeName,
+                        HostPath = new V1HostPathVolumeSource() {
+                            Path = _dockerSockPath
+                        }
                     }
-                }
-            };
+                };
 
                 podSpec.Containers[0].VolumeMounts = new List<V1VolumeMount>() {
-                new V1VolumeMount() {
-                    MountPath = _dockerSockPath,
-                    Name = volumeName
-                }
-            };
+                    new V1VolumeMount() {
+                        MountPath = _dockerSockPath,
+                        Name = volumeName
+                    }
+                };
             }
         }
-        await _kubectl.CreateNamespacedJobAsync(job, namespaceParameter: _namespace);
+
+        job = await _kubectl.CreateNamespacedJobAsync(job, namespaceParameter: _namespace);
+
+        return new WorkerAgent()
+        {
+            Id = name,
+            IsBusy = false,
+            IsProvisioning = true,
+            ProvisioningStart = DateTime.UtcNow
+        };
     }
 }
