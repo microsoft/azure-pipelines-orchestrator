@@ -75,7 +75,7 @@ JOB_PREFIX=agent-job-                        # Customize the agent job's prefix
 JOB_DOCKER_SOCKET_PATH=/var/run/docker.sock  # Set this to allow for docker builds within your docker container
 
 JOB_DEFINITION_FILE=job.yaml                 # Provide a template for the k8s Jobs the orchestrator creates
-
+INITIALIZE_NAMESPACE=true                    # Allows you to optionally disable namespace initialization
 
 MINIMUM_AGENT_COUNT=1                        # The minimum number of agents (regardless of Busy/Idle) to keep running at all times
 
