@@ -31,6 +31,8 @@ public class ACIAgentHostService : BaseHostService, IAgentHostService
         _orgUrl = config.GetValue<string>("ORG_URL");
         _orgPat = config.GetValue<string>("ORG_PAT");
         _os = config.GetValue<string>("JOB_OS", "linux").ToLower();
+        _minimumAgentCount = config.GetValue<int>("MINIMUM_AGENT_COUNT", 1);
+        _minimumIdleAgentCount = config.GetValue<int>("MINIMUM_IDLE_AGENT_COUNT", 0);
         _poolName = poolName;
 
         if (_azSub == null) throw new ArgumentNullException("Azure subscription is required.");

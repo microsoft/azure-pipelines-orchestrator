@@ -128,6 +128,36 @@ public class KubernetesAgentHostTests
     }
 
     [TestMethod]
+    public async Task ShouldProvisionNewAgent_IfExistingAreBusy_AndExceedsMinimumAgentCount()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>() {
+                {"MINIMUM_AGENT_COUNT", "1"},
+                {"MINIMUM_IDLE_AGENT_COUNT", "1"},
+            }.ToList())
+        .Build();
+
+        var svcMock =  new Mock<KubernetesAgentHostService>(config, new FileSystem(), "agentPool");
+        svcMock.SetupGet(x => x.ScheduledWorkerCount).CallBase();
+        svcMock.Setup(x => x.UpdateDemand(It.IsAny<int>())).CallBase();
+        svcMock.Setup(x => x.UpdateWorkersState(It.IsAny<List<WorkerAgent>>())).CallBase();
+        svcMock.Setup(x => x.StartAgent()).Returns(Task.FromResult(new WorkerAgent() {
+            Id = "Worker2",
+            ProvisioningStart = DateTime.UtcNow
+        }));
+        var svcConcrete = svcMock.Object;
+        // Place an existing worker into agents
+        await svcConcrete.UpdateWorkersState(new List<WorkerAgent>() {
+            new WorkerAgent() {
+                Id = "Worker1",
+                IsBusy = true
+            }
+        });
+
+        Assert.AreEqual(2, svcConcrete.ScheduledWorkerCount, "Should add new workers if existing are busy");
+    }
+
+    [TestMethod]
     public async Task ShouldNotProvisionNewAgent_IfExistingAreProvisioning()
     {
         var config = new ConfigurationBuilder().Build();

@@ -1,6 +1,7 @@
 public class BaseHostService
 {
     protected int _minimumAgentCount = 1;
+    protected int _minimumIdleAgentCount = 1;
     protected List<WorkerAgent> _workers = new List<WorkerAgent>();
     protected TimeSpan AGENT_PROVISIONING_TIMEOUT = TimeSpan.FromMinutes(5);
     protected string _poolName;
@@ -86,6 +87,15 @@ public class BaseHostService
             // Check to see if the agent pool has no existing agents if so, we need to start one as a baseline
             // Otherwise ADO will not be able to queue the pipelines jobs
             for (var i = 0; i < _minimumAgentCount; i++)
+            {
+                _workers.Add(await StartAgent());
+            }
+        }
+        if (_workers.Count(w => !w.IsBusy) < _minimumIdleAgentCount)
+        {
+            // Check to see if the agent pool has enough idle agents, if not provision more
+            // This allows you to keep a pool of warmed agents as needed
+            for (var i = 0; i < _minimumIdleAgentCount; i++)
             {
                 _workers.Add(await StartAgent());
             }

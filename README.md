@@ -67,10 +67,19 @@ spec:
 Additionally you can configure the following options environment variables.
 ```
 POLLING_DELAY=1000                           # Milliseconds to wait between runs
+
 RUN_ONCE=1                                   # Only run once - use this to switch a cron job instead of 24/7 monitor run
+
 JOB_PREFIX=agent-job-                        # Customize the agent job's prefix
+
 JOB_DOCKER_SOCKET_PATH=/var/run/docker.sock  # Set this to allow for docker builds within your docker container
+
 JOB_DEFINITION_FILE=job.yaml                 # Provide a template for the k8s Jobs the orchestrator creates
+
+
+MINIMUM_AGENT_COUNT=1                        # The minimum number of agents (regardless of Busy/Idle) to keep running at all times
+MINIMUM_IDLE_AGENT_COUNT=0                   # The minimum number of IDLE agents to keep running at all times
+
 ```
 
 ## Customizing the Kubernetes Job

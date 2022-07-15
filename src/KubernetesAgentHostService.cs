@@ -27,6 +27,7 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
         _dockerSockPath = config.GetValue<string>("JOB_DOCKER_SOCKET_PATH");
         _jobDefFile = config.GetValue<string>("JOB_DEFINITION_FILE");
         _minimumAgentCount = config.GetValue<int>("MINIMUM_AGENT_COUNT", 1);
+        _minimumIdleAgentCount = config.GetValue<int>("MINIMUM_IDLE_AGENT_COUNT", 0);
         _poolName = poolName;
         if (_jobDefFile != null)
         {
