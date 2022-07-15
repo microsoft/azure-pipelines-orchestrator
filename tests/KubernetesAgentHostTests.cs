@@ -1,9 +1,11 @@
 namespace ADOAgentOrchestrator.Tests;
+
+using System.Collections.Generic;
 using Moq;
 
 
 [TestClass]
-public class KubernetesAgentHostTests
+public partial class KubernetesAgentHostTests
 {
 
     [TestMethod]
@@ -22,6 +24,46 @@ public class KubernetesAgentHostTests
         var svcConcrete = svcMock.Object;
 
         mockFs.Verify(x => x.ReadAllText(jobDefFileName), Times.Once, "Should fetch jod definition from disk when provided.");
+    }
+    [TestMethod]
+    public void ShouldSkipNamespaceInitialization()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>() {
+                {"INITIALIZE_NAMESPACE", "false"},
+            }.ToList())
+            .Build();
+        var mockK8s = new Mock<KubernetesWrapper>(k8s.KubernetesClientConfiguration.BuildDefaultConfig());
+        var svcMock =  new Mock<KubernetesAgentHostService>(MockBehavior.Strict, config, new FileSystem(), string.Empty);
+        svcMock.Setup(m => m.K8s).Returns(mockK8s.Object);
+        var svcConcrete = svcMock.Object;
+
+        mockK8s.Verify(m => m.ListNamespaceAsync(), Times.Never, "Should not initialize namespace");
+    }
+    [TestMethod]
+    public async Task ShouldInitializeNamespace()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>() {
+                {"INITIALIZE_NAMESPACE", "true"},
+                {"JOB_NAMESPACE", "test"},
+            }.ToList())
+            .Build();
+        var mockK8s = new Mock<KubernetesWrapper>(k8s.KubernetesClientConfiguration.BuildDefaultConfig());
+        mockK8s.Setup(m => m.ListNamespaceAsync()).ReturnsAsync( new k8s.Models.V1NamespaceList(){});
+
+        var svcMock =  new Mock<KubernetesAgentHostService>(MockBehavior.Strict, config, new FileSystem(), string.Empty);
+        svcMock.SetupGet(m => m.K8s).Returns(mockK8s.Object);
+        svcMock.Setup(m => m.Initialize()).CallBase();
+
+        var svcConcrete = svcMock.Object;
+
+        await svcConcrete.Initialize();
+
+        mockK8s.Verify(m => m.ListNamespaceAsync(), Times.Once, "Should check existing namespaces");
+        mockK8s.Verify(m => m.CreateNamespaceAsync(
+            It.Is<k8s.Models.V1Namespace>(x => x.Metadata.Name == "test")), 
+            Times.Once, "Should create namespace");
     }
 
     [TestMethod]

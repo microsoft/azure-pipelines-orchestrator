@@ -2,6 +2,25 @@ using Microsoft.Extensions.Configuration;
 using k8s;
 using k8s.Models;
 
+public interface IK8s : ICoreV1Operations
+{
+    Task<V1NamespaceList> ListNamespaceAsync();
+    Task<V1Job> CreateNamespacedJobAsync(V1Job job, string namespaceParameter)
+        => this.CreateNamespacedJobAsync(job, namespaceParameter);
+    Task<V1Namespace> CreateNamespaceAsync(V1Namespace body);
+
+}
+public class KubernetesWrapper : k8s.Kubernetes, IK8s
+{
+    public KubernetesWrapper(KubernetesClientConfiguration config) : base(config) { }
+    public virtual Task<V1NamespaceList> ListNamespaceAsync()
+        => (this as k8s.Kubernetes).CoreV1.ListNamespaceAsync();
+    public virtual Task<V1Job> CreateNamespacedJobAsync(V1Job job, string namespaceParameter)
+        => (this as k8s.Kubernetes).CreateNamespacedJobAsync(job, namespaceParameter);
+    public virtual Task<V1Namespace> CreateNamespaceAsync(V1Namespace body)
+        => (this as k8s.Kubernetes).CreateNamespaceAsync(body);
+}
+
 public class KubernetesAgentHostService : BaseHostService, IAgentHostService
 {
     private const string DEFAULT_JOB_PREFIX = "agent-job";
@@ -11,19 +30,21 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
     private string _azpPat;
     private string _dockerSockPath;
     private string _jobDefFile;
+    private bool _initializeNamespace;
     private V1Job _predefinedJob;
-    private Kubernetes _kubectl;
+    public virtual KubernetesWrapper K8s { get; private set; }
 
     public KubernetesAgentHostService(IConfiguration config, IFileSystem fs, string poolName)
     {
         // The default config will either check the well known KUBECONFIG env
         // or, if within the cluster, checks /var/run/secrets/kubernetes.io/serviceaccount
-        _kubectl = new Kubernetes(KubernetesClientConfiguration.BuildDefaultConfig());
+        K8s = new KubernetesWrapper(KubernetesClientConfiguration.BuildDefaultConfig());
         _namespace = config.GetValue<string>("JOB_NAMESPACE", "default");
         _jobPrefix = config.GetValue<string>("JOB_PREFIX", DEFAULT_JOB_PREFIX);
         _jobImage = config.GetValue<string>("JOB_IMAGE");
         _azpUrl = config.GetValue<string>("ORG_URL");
         _azpPat = config.GetValue<string>("ORG_PAT");
+        _initializeNamespace = config.GetValue<bool>("INITIALIZE_NAMESPACE", true);
         _dockerSockPath = config.GetValue<string>("JOB_DOCKER_SOCKET_PATH");
         _jobDefFile = config.GetValue<string>("JOB_DEFINITION_FILE");
         _minimumAgentCount = config.GetValue<int>("MINIMUM_AGENT_COUNT", 1);
@@ -36,17 +57,21 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
         }
     }
 
-    public async Task Initialize()
+    public virtual async Task Initialize()
     {
-        if (!(await _kubectl.CoreV1.ListNamespaceAsync()).Items.Any(ns => ns.Name() == _namespace))
+        if (_initializeNamespace)
         {
-            await _kubectl.CoreV1.CreateNamespaceAsync(new V1Namespace()
+            var namespaces = (await K8s.ListNamespaceAsync()).Items;
+            if (namespaces == null || !namespaces.Any(ns => ns.Name() == _namespace))
             {
-                Metadata = new V1ObjectMeta()
+                await K8s.CreateNamespaceAsync(new V1Namespace()
                 {
-                    Name = _namespace
-                }
-            });
+                    Metadata = new V1ObjectMeta()
+                    {
+                        Name = _namespace
+                    }
+                });
+            }
         }
     }
 
@@ -128,7 +153,7 @@ public class KubernetesAgentHostService : BaseHostService, IAgentHostService
             }
         }
 
-        job = await _kubectl.CreateNamespacedJobAsync(job, namespaceParameter: _namespace);
+        job = await K8s.CreateNamespacedJobAsync(job, namespaceParameter: _namespace);
 
         return new WorkerAgent()
         {
