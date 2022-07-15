@@ -19,6 +19,7 @@ if ((Test-Path Env:AZP_WORK) -and -not (Test-Path $Env:AZP_WORK)) {
   New-Item $Env:AZP_WORK -ItemType directory | Out-Null
 }
 
+
 New-Item "\azp\agent" -ItemType directory | Out-Null
 
 # Let the agent ignore the token env variables
@@ -32,12 +33,24 @@ $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$(
 $package = Invoke-RestMethod -Headers @{Authorization=("Basic $base64AuthInfo")} "$(${Env:AZP_URL})/_apis/distributedtask/packages/agent?platform=win-x64&`$top=1"
 $packageUrl = $package[0].Value.downloadUrl
 
-Write-Host $packageUrl
+$cacheEnabled = (Test-Path "\mnt\azure-package-cache")
+if ($cacheEnabled -and (Test-Path "\mnt\azure-package-cache\$($package[0].Value.filename)")) 
+{
+  Write-Host "2. Extracting Cached Pacakge $($package[0].Value.filename)"
+  Copy-Item -Path "\mnt\azure-package-cache\$($package[0].Value.filename)" -Destination "$(Get-Location)\agent.zip"
+} 
+else 
+{
+  Write-Host $packageUrl
 
-Write-Host "2. Downloading and installing Azure Pipelines agent..." -ForegroundColor Cyan
+  Write-Host "2. Downloading and installing Azure Pipelines agent..." -ForegroundColor Cyan
 
-$wc = New-Object System.Net.WebClient
-$wc.DownloadFile($packageUrl, "$(Get-Location)\agent.zip")
+  $wc = New-Object System.Net.WebClient
+  $wc.DownloadFile($packageUrl, "$(Get-Location)\agent.zip")
+  if ($cacheEnabled) {
+    Copy-Item -Path "$(Get-Location)\agent.zip" -Destination "\mnt\azure-package-cache\$($package[0].Value.filename)"
+  }
+}
 
 Expand-Archive -Path "agent.zip" -DestinationPath "\azp\agent"
 
