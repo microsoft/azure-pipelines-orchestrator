@@ -78,6 +78,7 @@ JOB_DEFINITION_FILE=job.yaml                 # Provide a template for the k8s Jo
 
 
 MINIMUM_AGENT_COUNT=1                        # The minimum number of agents (regardless of Busy/Idle) to keep running at all times
+
 MINIMUM_IDLE_AGENT_COUNT=0                   # The minimum number of IDLE agents to keep running at all times
 
 ```
