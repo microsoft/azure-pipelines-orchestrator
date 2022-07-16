@@ -1,0 +1,89 @@
+name: Publish Images
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  test:
+    name: Test for Quality
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+    - name: Test
+      run: dotnet test --collect:"XPlat Code Coverage" --logger "junit;LogFilePath=TestResults.xml"
+
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action/composite@v1
+      if: always()
+      with:
+        files: "tests/TestResults.xml"
+
+  build-ghcr:
+    needs: [test]
+    name: Release to GitHub Container Registry
+    runs-on: ubuntu-latest
+    steps:
+    
+    - uses: actions/checkout@v3
+    
+    - name: Log into registry GHCR
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract Docker metadata
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ghcr.io/akanieski/ado-agent-orchestrator
+        tags: ${{ env.GITHUB_REF_NAME }}
+        
+    - name: Build and push Docker image to GHCR
+      id: build-and-push
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        platforms: linux/amd64
+
+  build-dockerhub:
+    needs: [test]
+    name: Release to Docker Hub Container Registry
+    runs-on: ubuntu-latest
+    steps:
+    
+    - uses: actions/checkout@v3
+    
+    - name: Log into registry GHCR
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_HUB_USER }}
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+        
+    - name: Extract Docker metadata
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: akanieski/ado-agent-orchestrator
+        tags: ${{ env.GITHUB_REF_NAME }}
+        
+    - name: Build and push Docker image to GHCR
+      id: build-and-push
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        platforms: linux/amd64
