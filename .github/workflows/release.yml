@@ -49,7 +49,6 @@ jobs:
     - name: Log into registry GHCR
       uses: docker/login-action@v2
       with:
-        registry: hub.docker.com
         username: ${{ secrets.DOCKER_HUB_USER }}
         password: ${{ secrets.DOCKER_HUB_TOKEN }}
         
