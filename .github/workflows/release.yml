@@ -37,8 +37,3 @@ jobs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         platforms: linux/amd64
-
-    - name: Sign the published Docker image
-      env:
-        COSIGN_EXPERIMENTAL: "true"
-      run: cosign sign ghcri.io/akaniesiki/ado-agent-orchestrator@${{ steps.build-and-push.outputs.digest }}
