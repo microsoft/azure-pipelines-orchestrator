@@ -5,10 +5,29 @@ on:
     branches: [release-logic]
     tags:
     - 'v*'
-    
+
 jobs:
+  test:
+    name: Test for Quality
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+    - name: Test
+      run: dotnet test --collect:"XPlat Code Coverage" --logger "junit;LogFilePath=TestResults.xml"
+
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action/composite@v1
+      if: always()
+      with:
+        files: "tests/TestResults.xml"
 
   build-ghcr:
+    needs: [test]
     name: Release to GitHub Container Registry
     runs-on: ubuntu-latest
     steps:
@@ -40,6 +59,7 @@ jobs:
         platforms: linux/amd64
 
   build-dockerhub:
+    needs: [test]
     name: Release to Docker Hub Container Registry
     runs-on: ubuntu-latest
     steps:
@@ -56,7 +76,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v4
       with:
-        images: hub.docker.com/akanieski/ado-agent-orchestrator
+        images: akanieski/ado-agent-orchestrator
         tags: ${{ env.GITHUB_REF_NAME }}
         
     - name: Build and push Docker image to GHCR
