@@ -186,3 +186,18 @@ Other examples of commonly cached paths:
 - `/root/.nuget/packages` - Save time on .NET builds
 
 **Note:** the `/root` path above is based on the user/homepath of the user your docker agent runs under. In the examples I use `root` user (not ideal in real world scenarios) for my agent containers. Also note for windows they will also have different paths. The key for both scenarios is that these `/root` paths are the container user's homepath, on Windows it may be `c:\users\agent\` etc.
+
+
+## Contributing
+
+This project welcomes [contributions and suggestions](docs/contribute.md).
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
+contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+
+## Issues
+
+We accept issue reports both here (file a GitHub issue) and in [Developer Community](https://developercommunity.visualstudio.com/spaces/21/index.html).
+
+Do you think there might be a security issue? Have you been phished or identified a security vulnerability? Please don't report it here - let us know by sending an email to secure@microsoft.com.
