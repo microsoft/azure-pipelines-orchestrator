@@ -4,3 +4,4 @@
 **/TestResults
 .vs/
 .tmp/
+.DS_Store

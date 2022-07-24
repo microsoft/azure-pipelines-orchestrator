@@ -1,0 +1,75 @@
+name: integration-test
+
+on: 
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    env:
+      # The ADO project to use during the test 
+      ADO_PROJECT: hol
+      # The name of the pipeline that will be created during the test
+      # a random number will be appended to this name
+      PIPELINE_NAME: integration-pipeline
+      # The repository in the ADO project that contains the
+      # azure-pipelines.yml file
+      PIPELINE_REPO: pipeline-test
+      # The image to use when creating the agent
+      JOB_IMAGE: ghcr.io/akanieski/ado-pipelines-linux:0.0.1-preview
+      # The agent pool to use during the test
+      AGENT_POOLS: test-agent-pool
+      # The k8s namespace to create all the resources in
+      NAMESPACE: ado
+      # The amount of time to wait before assuming the test has failed
+      TEST_TIMEOUT: 600s
+    # This environment should contain all the secrets
+    environment: integration
+    steps:
+      # Checkout the repo
+      - 
+        uses: actions/checkout@v2
+      # Provision a Kind cluster to run the pipeline agent on
+      - 
+        name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1.3.0
+        with:
+          config: ./integration-tests/kind-config.yaml
+      # Run a script to install a local docker registry on the cluster
+      # complete with an ingress
+      -
+        name: Setup Registry
+        run: ./integration-tests/setup-registry.sh
+      # Setup QEMU and Docker for the build
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          # This allows the docker push to access the host network
+          # where the Kind cluster's registry resides
+          driver-opts: network=host
+      # Calculate what the image name should be
+      - 
+        name: Build Image Name
+        run: | 
+          GIT_SHA=$(git rev-parse --short HEAD)
+          echo "IMAGE_NAME=localhost/azure-pipelines-orchestrator:${GIT_SHA}" >> $GITHUB_ENV
+      -
+        name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          tags: ${{ env.IMAGE_NAME }}
+      # Invoke the actual integration test script
+      -
+        name: Run Integration Test
+        run: |
+          ./integration-tests/test-deployment.sh ${{ env.IMAGE_NAME }} \
+            ${{ secrets.ORG_URL }} \
+            ${{ secrets.ORG_PAT }}
