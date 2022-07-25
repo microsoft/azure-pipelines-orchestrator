@@ -44,7 +44,7 @@ public class ACIAgentHostService : BaseHostService, IAgentHostService
 
     private IAzure GetAzureContext() =>
         FluentAzure
-        .Authenticate(new AzureIdentityFluentCredentialAdapter(_azTenant, AzureEnvironment.FromName(_azEnvironment)))
+        .Authenticate(new CustomCredentialAdapter(_azTenant, AzureEnvironment.FromName(_azEnvironment)))
         .WithSubscription(_azSub);
 
     public override async Task<WorkerAgent> StartAgent()
