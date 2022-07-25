@@ -1,4 +1,5 @@
-
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 namespace Azure.Extensions.Identity;
 using System;
 using System.Collections.Concurrent;
