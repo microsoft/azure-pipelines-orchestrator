@@ -1,3 +1,7 @@
+## Archived
+This project is going to be archived. We recommend using KEDA for automaticalyl scaling agents
+https://keda.sh/docs/2.8/scalers/azure-pipelines/
+
 # Azure Pipelines - Kubernetes Orchestrator
 [![Continuous Integration](https://github.com/microsoft/azure-pipelines-orchestrator/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/microsoft/azure-pipelines-orchestrator/actions/workflows/ci.yaml)
 
